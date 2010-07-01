@@ -1,0 +1,118 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+<script>
+
+// Init
+var auth;
+
+function performCommand(event) {
+    if (event.command === "toolbar-click") {
+		runApp();
+    	event.target.browserWindow.activeTab.url = "http://bilddagboken.se";
+    }
+}
+
+function validateCommand(event) {
+	console.log("validate command: " + event.command);
+	console.log("appStarted:"+appStarted);
+	if(appStarted = false) {
+		runApp();
+	}
+}
+
+// Add eventlisteners
+safari.application.addEventListener("command", performCommand, false);
+safari.application.addEventListener("validate", validateCommand, false);
+
+// Helper functions
+
+function getUserStatus(username,password){
+	var xmlHttp = new XMLHttpRequest();
+	
+	var url = "https://api.myphotodiary.com/user_status.json?api_key=66217f993f25a8a05dd72970473aa2227450dcad";
+	
+	xmlHttp.open('GET', url, true,encodeURIComponent(username),encodeURIComponent(password));
+	xmlHttp.withCredentials = "true";
+	xmlHttp.onerror = function(){
+		console.log("error");
+	}
+	xmlHttp.onreadystatechange = function(){
+		if (xmlHttp.readyState == 4){
+			//alert("RESPONSE");
+			var data;
+			eval("data="+xmlHttp.responseText);
+			if(xmlHttp.status != 200) {
+				alert("Ett fel har uppstått! \n " + xmlHttp.status + ":" + data.status + ":" + data.error);
+				return false;
+			}
+			updateToolbar(data);
+			//return(data);
+			console.log(xmlHttp);
+		}
+	};
+	xmlHttp.send(null);
+}
+
+function updateToolbar(data) {
+	var numberOfUpdates = data.newcomments + data.newfriendrequests + data.newguestbookentries + data.newprivatemessages + data.updatedfriends;
+	
+	setToolbarBadge(numberOfUpdates);
+	
+	updateTimer();
+}
+
+function setToolbarBadge(numberOfUpdates) {
+	var itemArray = safari.extension.toolbarItems;
+	for (var i = 0; i < itemArray.length; ++i) {
+	    var item = itemArray[i];
+		item.badge = numberOfUpdates;
+	}
+}
+
+function getUsernameAndPassword() {
+	// Check settings
+	var username = safari.extension.settings.username;
+	var password = safari.extension.settings.password;
+
+	if(username && password) {
+		// Great!
+	} else {
+		safari.extension.settings.username = prompt("Ange användarnamn:");
+		safari.extension.settings.password = prompt("Ange lösenord:");
+		
+		username = safari.extension.settings.username;
+		password = safari.extension.settings.password;
+	}
+	
+	return {"username":username, "password":password};
+}
+
+// Application
+var appStarted = false;
+var timer = null;
+
+function runApp() {
+	console.log("runApp: " + appStarted);
+	appStarted = true;
+	
+	auth = getUsernameAndPassword();
+	getUserStatus(auth.username, auth.password);
+}
+
+function updateTimer() {
+	console.log("updateTimer:" + timer);
+	if(timer) {
+		clearTimeout(timer);
+		console.log("clearTimeout");
+	}
+	timer = setTimeout("runApp()",60000);
+}
+
+runApp();
+
+</script>
+</body>
+</html>
